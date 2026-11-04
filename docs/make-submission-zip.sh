@@ -25,7 +25,7 @@ if [ -f "$VIDEO" ]; then mkdir -p "$STAGE/video" && cp "$VIDEO" "$STAGE/video/";
 cat > "$STAGE/README.txt" <<'EOF'
 Streaming-Order AMM - FRE-GY 6931 final project submission package
 Team: Aditya Shah (as22008), Siddhant Yadav (sy4583), Dev Salvi (ds8259)
-Repository: https://github.com/M720d/Streaming-Order-AMM (graded version: tag "final")
+Repository: https://github.com/Sidziesama/StreamingOrderAMM_BlockchainFinalProject (graded version: tag "final")
 
 UPLOAD_TO_BRIGHTSPACE/  report.pdf and submission.json (the two files the course brief asks one member to upload)
 source/                 Solidity (contracts/, plus source-code.pdf with line numbers) and the off-chain scripts

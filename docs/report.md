@@ -4,7 +4,7 @@
 
 Team: Aditya Shah (as22008), Siddhant Yadav (sy4583), Dev Salvi (ds8259)
 
-Network: Ethereum Sepolia · Repository: https://github.com/M720d/Streaming-Order-AMM (tag `final`) · Video: linked in `submission.json`
+Network: Ethereum Sepolia · Repository: https://github.com/Sidziesama/StreamingOrderAMM_BlockchainFinalProject (tag `final`) · Video: linked in `submission.json`
 
 **Contents**
 
