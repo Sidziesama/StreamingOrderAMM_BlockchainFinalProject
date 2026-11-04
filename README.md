@@ -1,108 +1,120 @@
 # Streaming-Order AMM
 
-Sell a large amount of WBTC for USDC in equal slices over time instead of all at once, with every slice checked against
-Chainlink. FRE-GY 6931 Blockchain & Cryptocurrency, Fall 2026. Team: Aditya Shah (as22008), Siddhant Yadav (sy4583),
-Dev Salvi (ds8259).
+**Sell a large amount of WBTC for USDC in equal slices over time instead of all at once, with every slice checked against Chainlink.**
 
-**Testnet only.** Everything runs on a local chain or on Sepolia with mock tokens. Never use a wallet that holds real funds.
+Final project for **FRE-GY 6931 Blockchain & Cryptocurrency** (NYU Tandon, Fall 2026), Topic 1: Automated Market Maker.
+Team: **Aditya Shah** (as22008), **Siddhant Yadav** (sy4583), **Dev Salvi** (ds8259). Everything runs on the **Ethereum Sepolia** test network
+with mock tokens; no real money is involved.
 
-## What it does
+## Deliverables
 
-- **Pool** (`packages/hardhat/contracts/Pool.sol`): constant-product pool for mock WBTC (8 decimals) and mock USDC
-  (6 decimals), 30 bps fee, LP shares (the pool is the ERC-20 share token), time-weighted average price. No owner.
-- **PriceGuard** (`PriceGuard.sol`): reads Chainlink BTC/USD; reverts on a stale, non-positive or carried-over price; tells the
-  order book when the pool is too far from Chainlink. Its owner can change only the staleness limit (max 1 day) and the
-  allowed deviation (max 20%).
-- **OrderBook** (`OrderBook.sol`): a seller deposits the whole order and gets an ERC-721. Anyone can call `executeSlice` once
-  per interval; each slice sells `total / slices` (the last one sells the remainder) and must return at least the
-  Chainlink-implied amount minus the order's tolerance. A slice is skipped, not reverted, when the pool is off. The NFT holder
-  can claim USDC or cancel at any time. No owner.
-- **Keeper** (`scripts/keeper.ts`): finds orders from events and calls `executeSlice` when due; never sends twice.
-- **Arbitrage bot** (`scripts/arb.ts`): trades the pool back toward Chainlink when that is profitable after the fee; this is
-  what refills the pool between slices.
-- **Web app** (`packages/nextjs`): pool and oracle view, create an order with a lump-sum vs sliced preview and a confirmation
-  step, watch it stream in, claim and cancel; stale-feed warning; plain-language errors.
-
-Price unit everywhere: **USDC per whole WBTC, scaled by 1e18** (60,000 USDC/BTC = `60_000e18`).
-
-## Install
-
-Requires Node 22 (>= 22.10) and Yarn, plus Python 3.9+ only for the notebooks and Slither.
-
-```bash
-git clone https://github.com/M720d/Streaming-Order-AMM.git
-cd Streaming-Order-AMM
-yarn install
-cp packages/hardhat/.env.example packages/hardhat/.env      # fill only what you need; never commit it
-```
-
-## Run the tests
-
-```bash
-yarn test            # every contract and end-to-end test (92), with gas stats
-```
-
-Includes expected-revert tests, a seeded invariant test on the pool, reentrancy attacks, and end-to-end tests that run the
-real keeper and arbitrage code against the contracts. Gas reports: `docs/gas-pool.md`, `docs/gas-orders.md`. Slither:
-`docs/slither-full.md` (command inside).
-
-## Run locally (contracts, app, keeper, bot)
-
-```bash
-yarn chain                              # terminal 1: local chain
-yarn deploy --tags StreamingAMM         # terminal 2: deploys, seeds the pool at the mock oracle price
-yarn start                              # terminal 3: http://localhost:3000 (burner wallet connects automatically)
-```
-
-Use the app's faucet for test WBTC and create an order. A local chain's clock moves only when blocks are mined, so to let a
-slice come due quickly, run any transaction or mine a block.
-
-Keeper and bot, against the local chain (the keys below are Hardhat's public test accounts, local use only):
-
-```bash
-# in packages/hardhat/.env (addresses are printed by yarn deploy and saved in packages/hardhat/deployments.local.json)
-RPC_URL=http://127.0.0.1:8545
-ORDER_BOOK=0x...      POOL=0x...      BTC_USD_FEED=0x...   # the MockAggregator on a local chain
-KEEPER_PRIVATE_KEY=0x...    ARB_PRIVATE_KEY=0x...
-
-yarn keeper           # loop; `yarn keeper --once` for one pass
-yarn arb              # loop; `yarn arb --once` for one look
-```
-
-Each prints one JSON line per event (`filled`, `skipped`, `reverted` with the tx hash). All options (threshold, max trade
-size, minimum profit, retry delays) are in `packages/hardhat/.env.example` and `docs/offchain.md`.
-
-## Sepolia
-
-Step by step (credentials, deploy, demo, evidence): `docs/sepolia-runbook.md`; deploy details: `docs/deployment.md`. Then run the keeper and bot with a Sepolia `RPC_URL`, testnet-only keys
-and the deployed addresses (`START_BLOCK` = the OrderBook deploy block), and start the app with
-`NEXT_PUBLIC_TARGET_NETWORK=sepolia yarn start`. Addresses and transaction evidence: `submission.json`.
-
-## Analysis
-
-| Notebook | Question |
+| Deliverable | Where |
 |---|---|
-| `docs/analysis_pool.ipynb` (Part A) | Price impact by trade size; impermanent loss and LP profit with fees |
-| `docs/analysis_slicing.ipynb` (Part B) | Lump sum vs 5, 10, 20 slices, with and without refill; reconciliation with the contracts |
-| `docs/analysis_costs.ipynb` (Part C) | USD cost of each action; when slicing pays after gas; break-even volume |
+| Final report (PDF, 8 sections, screenshots, references) | [`docs/report.pdf`](docs/report.pdf) |
+| All Solidity source with line numbers (PDF) | [`docs/source-code.pdf`](docs/source-code.pdf) |
+| Submission data (team, contracts, transactions, features) | [`submission.json`](submission.json) |
+| Financial analysis (Python notebooks with charts) | [`docs/analysis_pool.ipynb`](docs/analysis_pool.ipynb), [`docs/analysis_slicing.ipynb`](docs/analysis_slicing.ipynb), [`docs/analysis_costs.ipynb`](docs/analysis_costs.ipynb) |
+| Etherscan and application screenshots | [`docs/screenshots/`](docs/screenshots) |
+| Demo video | submitted on Brightspace with the report |
 
-Run with `source .venv/bin/activate && jupyter lab docs/` (Python packages: numpy, pandas, matplotlib, jupyter).
+The graded version of this repository is the tag **`final`**.
 
-## Repository map
+## The idea in one paragraph
+
+Selling a large order into a constant-product pool moves the price against you with every coin sold. Splitting the order into slices
+helps only if something pushes the price back between slices. We built a pool, an order contract that holds each order as an NFT and
+sells it in equal slices, a Chainlink price guard, a keeper script that runs the slices, an arbitrage bot that refills the pool, and a web
+app, and we measured the result on Sepolia: **a 5 WBTC order earned +66 bps over a lump sum, and our model matched all three on-chain
+slices to the last unit.**
+
+## Contracts on Sepolia (all source-verified on Etherscan)
+
+| Contract | What it does | Address |
+|---|---|---|
+| `Pool` | Constant-product pool, 30 bps fee, TWAP accumulator; **also the ERC-20 LP token `SALP`** | [`0x9461fd23335242663ddf7a9fae994995df7fc8e9`](https://sepolia.etherscan.io/address/0x9461fd23335242663ddf7a9fae994995df7fc8e9#code) |
+| `OrderBook` | **ERC-721 `SORDER`**: one NFT per order; equal slices; claim and cancel by the holder | [`0x9c20dbb0bb17a0532348e69502af3b8b44fefa62`](https://sepolia.etherscan.io/address/0x9c20dbb0bb17a0532348e69502af3b8b44fefa62#code) |
+| `PriceGuard` | Chainlink BTC/USD checks (staleness, sign, round) and a pool deviation band | [`0xe52d276bec7b96bcdd0632050cad5717956289df`](https://sepolia.etherscan.io/address/0xe52d276bec7b96bcdd0632050cad5717956289df#code) |
+| `MockWBTC` | Test WBTC, 8 decimals, capped faucet | [`0x2c95a78b3a3fc73c16bdd6394bfe30cc51d37d12`](https://sepolia.etherscan.io/address/0x2c95a78b3a3fc73c16bdd6394bfe30cc51d37d12#code) |
+| `MockUSDC` | Test USDC, 6 decimals, capped faucet | [`0x9cd5587b22d15790a5880d37837cdd091c9ea0b5`](https://sepolia.etherscan.io/address/0x9cd5587b22d15790a5880d37837cdd091c9ea0b5#code) |
+| Chainlink BTC/USD (external) | Price feed | [`0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43`](https://sepolia.etherscan.io/address/0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43) |
+
+Key transactions (order creation, keeper slices, arbitrage refills, claims) are listed in [`submission.json`](submission.json) and in
+Appendix A of the report.
+
+## Results at a glance
+
+- **Slicing pays only with a refill.** Model: 50 WBTC into a 500 WBTC pool costs 934 bps as a lump sum and 108 bps in 20 slices with a refill; without a refill slicing is slightly *worse* than a lump sum.
+- **On Sepolia:** order of 5 WBTC in 3 slices returned 387,501.20 USDC against 384,946.34 for one swap (+66 bps); the model equals the chain for 3 of 3 slices.
+- **Testing:** 92 tests in one command, including revert, reentrancy, invariant and end-to-end tests; mutation checks confirm the tests catch bugs.
+- **Security:** Slither with no high-severity finding; every finding fixed or explained.
+- **Gas:** two measured optimizations (pool storage packing, about -8% on swaps; two-slot orders, -22,054 gas on `createOrder`).
+
+## Repository structure
 
 ```
-packages/hardhat/contracts/     Pool, PriceGuard, OrderBook, libraries/PriceMath, interfaces/, mocks/
-packages/hardhat/test/          Pool, PriceGuard, OrderBook, EndToEnd, gas tests
-packages/hardhat/deploy/        01..05 deploy and seed, 98 writes the address file
-packages/hardhat/scripts/       keeper.ts, arb.ts, offchain/ (shared bot code), fundArb.ts, collectEvidence.ts, measureCostGas.ts
-packages/nextjs/                web app (app/page.tsx, app/_components, hooks/streaming, utils/streaming)
-docs/                           notebooks, report drafts, Slither, gas, deployment, AI-use log
+packages/
+  hardhat/
+    contracts/            Pool, OrderBook, PriceGuard, libraries/PriceMath, interfaces/, mocks/
+    deploy/               deployment and seeding scripts (01 to 05, 98 writes deployments.json)
+    test/                 Pool, PriceGuard, OrderBook, EndToEnd and gas tests
+    scripts/              keeper.ts, arb.ts, offchain/ (shared bot code), demoCheck, evidence and funding tools
+    deployments.json      Sepolia addresses, deployment transactions and blocks
+    deployments/sepolia/  ABI and compiler metadata per contract
+  nextjs/                 web application (Scaffold-ETH 2: Next.js, wagmi, viem, RainbowKit)
+docs/
+  report.pdf, report.md   final report and its source
+  source-code.pdf         Solidity source listing
+  analysis_*.ipynb        financial analysis (Parts A, B, C); data/ and figures/ hold their inputs and charts
+  screenshots/            Etherscan and application screenshots used in the report
+  slither-*.md, gas-*.md  security scan and gas measurements
+  deployment.md, sepolia-runbook.md, offchain.md, frontend.md   how to deploy and run everything
+  ai-use.md               log of how AI assistance was used
+  internal/               the team's working notes and earlier report drafts
+submission.json           course submission data
 ```
+
+## Quick start
+
+Requires **Node 22.10 or later**. Yarn 4 is bundled in the repository: if `yarn` is not installed, run `corepack enable`, or replace `yarn` below
+with `node .yarn/releases/yarn-4.13.0.cjs`.
+
+```bash
+git clone https://github.com/Sidziesama/StreamingOrderAMM_BlockchainFinalProject.git
+cd StreamingOrderAMM_BlockchainFinalProject
+yarn install
+yarn test                                   # 92 tests, all on the local Hardhat network
+```
+
+Run everything locally, each in its own terminal:
+
+```bash
+yarn chain                                  # local blockchain
+yarn deploy --tags StreamingAMM             # deploy and seed the pool
+yarn start                                  # web app at http://localhost:3000
+```
+
+Run the app against the live Sepolia contracts: `NEXT_PUBLIC_TARGET_NETWORK=sepolia yarn start`.
+
+Keeper and arbitrage bot (configure `packages/hardhat/.env` from `.env.example` with **testnet-only** keys; never commit `.env`):
+
+```bash
+yarn keeper                                 # executes due slices; logs each result with its transaction hash
+yarn arb                                    # trades the pool back toward Chainlink when profitable after the fee
+yarn demo-check                             # read-only health check of the Sepolia deployment
+```
+
+The full Sepolia procedure (credentials, deploy, verify, bots, evidence) is in [`docs/sepolia-runbook.md`](docs/sepolia-runbook.md).
 
 ## Known limitations
 
 - A slice can be sandwiched within the guard band and the seller's tolerance (no private mempool).
-- The proposed protocol fee and execution fee are not implemented (future work); the Pool pays the whole 30 bps fee to LPs, so as built the protocol earns nothing.
+- The proposed execution fee and protocol fee share are not implemented (future work), so as built the protocol earns no revenue.
 - No external audit. Testnet only.
 
-Built on [Scaffold-ETH 2](https://scaffoldeth.io) (Hardhat, Next.js, wagmi, viem, RainbowKit). AI use: `docs/ai-use.md`.
+## AI use
+
+AI was used in the making of this project; see Section 8 of the report and [`docs/ai-use.md`](docs/ai-use.md).
+
+## License
+
+MIT. Built on [Scaffold-ETH 2](https://scaffoldeth.io) by BuidlGuidl (see [`LICENCE`](LICENCE)).

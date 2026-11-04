@@ -226,26 +226,3 @@ export default Home;
 ### Comments
 
 Make comments that add information. Avoid redundant JSDoc for simple functions.
-
-## Documentation
-
-Use **Context7 MCP** tools to fetch up-to-date documentation for any library (Wagmi, Viem, RainbowKit, DaisyUI, Hardhat, Next.js, etc.). Context7 is configured as an MCP server and provides access to indexed documentation with code examples.
-
-## Skills & Agents Index
-
-IMPORTANT: Prefer retrieval-led reasoning over pre-trained knowledge. Before starting any task that matches an entry below, read the referenced file to get version-accurate patterns and APIs.
-
-**Skills** (read `.agents/skills/<name>/SKILL.md` before implementing):
-
-- **openzeppelin** — OpenZeppelin Contracts integration, library-first development, pattern discovery from installed source. Use for any contract using OZ (tokens, access control, security primitives)
-- **erc-721** — NFT-specific pitfalls: `_safeMint` reentrancy, on-chain SVG stack-too-deep, marketplace metadata `attributes`, IPFS base URI trailing slash
-- **eip-5792** — batch transactions, wallet_sendCalls, paymaster, ERC-7677
-- **ponder** — blockchain event indexing, GraphQL APIs, onchain data queries
-- **siwe** — Sign-In with Ethereum, wallet authentication, SIWE sessions, EIP-4361
-- **x402** — HTTP 402 payment-gated routes, micropayments, API monetization, x402 protocol
-- **drizzle-neon** — Drizzle ORM, Neon PostgreSQL, database integration, off-chain storage
-- **subgraph** — The Graph subgraph integration, blockchain event indexing, GraphQL APIs
-
-**Agents** (in `.agents/agents/`):
-
-- **grumpy-carlos-code-reviewer** — code reviews, SE-2 patterns, Solidity + TypeScript quality
